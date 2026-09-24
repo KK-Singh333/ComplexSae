@@ -21,10 +21,10 @@ The CLI accepts any model supported by `transformers` and any valid PyTorch
 module path inside that model. Common layer paths are:
 
 ```text
-GPT-2:   transformer.h.5.mlp
-Llama:   model.layers.5.mlp
-Mistral: model.layers.5.mlp
-Qwen:    model.layers.5.mlp
+GPT-2 (`AutoModel`):             h.5.mlp
+GPT-2 (`AutoModelForCausalLM`):  transformer.h.5.mlp
+Llama (`AutoModel`):             layers.5.mlp
+Llama (`AutoModelForCausalLM`):  model.layers.5.mlp
 ```
 
 Example using GPT-2 and Wikitext:

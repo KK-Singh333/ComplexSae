@@ -14,6 +14,27 @@ from sae_lens.saes.sae import TrainStepInput
 from .complex_sae import ComplexSAE
 
 
+def resolve_layer_path(model: nn.Module, layer_name: str) -> str:
+    """Resolve common AutoModel versus AutoModelForCausalLM path prefixes."""
+    candidates = [layer_name]
+    for prefix in ("transformer.", "model."):
+        if layer_name.startswith(prefix):
+            candidates.append(layer_name[len(prefix) :])
+
+    for candidate in candidates:
+        try:
+            model.get_submodule(candidate)
+            return candidate
+        except AttributeError:
+            continue
+
+    top_level = ", ".join(sorted(dict(model.named_children()))) or "<none>"
+    raise AttributeError(
+        f"Could not find layer {layer_name!r} in {type(model).__name__}. "
+        f"Tried {candidates!r}. Top-level modules: {top_level}"
+    )
+
+
 def move_to_device(value: Any, device: torch.device | str) -> Any:
     """Move tensors in a nested batch to a device."""
     if torch.is_tensor(value):
@@ -48,9 +69,9 @@ class ActivationCapture:
     """Forward-hook based activation capture for an arbitrary module."""
 
     def __init__(self, model: nn.Module, layer_name: str):
-        self.layer_name = layer_name
+        self.layer_name = resolve_layer_path(model, layer_name)
         self.activation: torch.Tensor | None = None
-        self._handle = model.get_submodule(layer_name).register_forward_hook(self._hook)
+        self._handle = model.get_submodule(self.layer_name).register_forward_hook(self._hook)
 
     def _hook(self, module: nn.Module, inputs: tuple[Any, ...], output: Any) -> None:
         activation = first_tensor(output)
