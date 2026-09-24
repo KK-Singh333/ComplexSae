@@ -4,7 +4,7 @@ Example:
     python train_hf_complex_sae.py \
         --model gpt2 \
         --layer transformer.h.5.mlp \
-        --dataset wikitext \
+        --dataset Salesforce/wikitext \
         --dataset-config wikitext-2-raw-v1 \
         --d-sae 2048 \
         --steps 1000 \
@@ -22,6 +22,16 @@ from torch.utils.data import DataLoader
 
 from complex_sae import ComplexSAE, ComplexSAEConfig, HuggingFaceSAETrainer
 from complex_sae.huggingface import ActivationCapture, move_to_device
+
+
+DATASET_ALIASES = {
+    "wikitext": "Salesforce/wikitext",
+}
+
+
+def canonical_dataset_id(dataset_id: str) -> str:
+    """Return a Hub-compatible dataset ID for common legacy shorthands."""
+    return DATASET_ALIASES.get(dataset_id, dataset_id)
 
 
 def parse_args() -> argparse.Namespace:
@@ -94,9 +104,10 @@ def main() -> None:
         tokenizer.pad_token = tokenizer.eos_token
     model = AutoModel.from_pretrained(args.model).to(device)
 
-    train_dataset = load_dataset(args.dataset, args.dataset_config, split=args.train_split)
+    dataset_id = canonical_dataset_id(args.dataset)
+    train_dataset = load_dataset(dataset_id, args.dataset_config, split=args.train_split)
     eval_split = args.eval_split or args.train_split
-    eval_dataset = load_dataset(args.dataset, args.dataset_config, split=eval_split)
+    eval_dataset = load_dataset(dataset_id, args.dataset_config, split=eval_split)
     train_loader = build_dataloader(
         train_dataset, tokenizer, args.text_column, args.max_seq_length, args.batch_size
     )

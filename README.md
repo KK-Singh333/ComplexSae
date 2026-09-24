@@ -33,7 +33,7 @@ Example using GPT-2 and Wikitext:
 python train_hf_complex_sae.py \
   --model gpt2 \
   --layer transformer.h.5.mlp \
-  --dataset wikitext \
+	--dataset Salesforce/wikitext \
   --dataset-config wikitext-2-raw-v1 \
   --d-sae 2048 \
   --steps 1000 \
