@@ -22,12 +22,27 @@ from torch.utils.data import DataLoader
 
 from complex_sae import ComplexSAE, ComplexSAEConfig, HuggingFaceSAETrainer
 from complex_sae.huggingface import ActivationCapture, move_to_device
+from SAEbench.saebench.custom_saes.run_all_evals_custom_saes import run_evals
 
 
 DATASET_ALIASES = {
     "wikitext": "Salesforce/wikitext",
 }
 
+MODEL_CONFIGS = {
+    "pythia-70m-deduped": {
+        "batch_size": 512,
+        "dtype": "float32",
+        "layers": [3, 4],
+        "d_model": 512,
+    },
+    "gemma-2-2b": {
+        "batch_size": 32,
+        "dtype": "bfloat16",
+        "layers": [12],
+        "d_model": 2304,
+    },
+}
 
 def canonical_dataset_id(dataset_id: str) -> str:
     """Return a Hub-compatible dataset ID for common legacy shorthands."""
@@ -116,6 +131,7 @@ def main() -> None:
     )
 
     d_in = infer_layer_width(model, args.layer, train_loader, str(device))
+    assert d_in==MODEL_CONFIGS[args.model]["d_model"], f"Layer width {d_in} does not match expected {MODEL_CONFIGS[args.model]['d_model']} for model {args.model}"
     sae_dtype = getattr(torch, args.sae_dtype)
     cfg = ComplexSAEConfig(
         d_in=d_in,
@@ -134,8 +150,32 @@ def main() -> None:
         metrics = trainer.evaluate(eval_loader, batches=args.eval_batches)
 
     sae.save_model(output_path)
-    (output_path / "metrics.json").write_text(json.dumps(metrics.as_dict(), indent=2) + "\n")
-    print(json.dumps(metrics.as_dict(), indent=2))
+    
+    eval_types = [
+        "absorption",
+        "autointerp",
+        "core",
+        "ravel",
+        "scr",
+        "tpp",
+        "sparse_probing",
+        "sparse_probing_sae_probes",
+        "unlearning",
+    ]
+
+    run_evals(
+            model_name=args.model,
+            selected_saes=[("complex_sae",sae)],
+            llm_batch_size=MODEL_CONFIGS[args.model]["batch_size"],
+            llm_dtype=getattr(torch, MODEL_CONFIGS[args.model]["dtype"]),
+            device=device,
+            eval_types=eval_types,
+            api_key=api_key,
+            force_rerun=False,
+            save_activations=False,
+        )
+    # (output_path / "metrics.json").write_text(json.dumps(metrics.as_dict(), indent=2) + "\n")
+    # print(json.dumps(metrics.as_dict(), indent=2))
 
 
 if __name__ == "__main__":
