@@ -222,7 +222,7 @@ class HuggingFaceSAETrainer:
 
             total_squared_error += float(error.sum().cpu())
             total_variance += float((activations - activations.mean(dim=-1, keepdim=True)).square().sum().cpu())
-            total_l0 += float((magnitude > 0).sum().cpu())
+            total_l0 += float((magnitude > 1e-3).sum().cpu())
             total_magnitude += float(magnitude.sum().cpu())
             total_tokens += token_count
 
